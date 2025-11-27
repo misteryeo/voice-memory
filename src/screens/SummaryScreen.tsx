@@ -23,6 +23,8 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
   const { type, audioUri, transcription, names: initialNames, themes: initialThemes, textNote } = route.params;
   
   const [names, setNames] = useState<string[]>(initialNames);
+  const [editedTranscription, setEditedTranscription] = useState(transcription);
+  const [isEditingTranscription, setIsEditingTranscription] = useState(false);
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [newNameInput, setNewNameInput] = useState('');
 
@@ -44,7 +46,7 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         type,
         audioPath: audioUri,
-        transcription,
+        transcription: editedTranscription,
         names,
         themes: initialThemes,
         timestamp: Date.now(),
@@ -73,8 +75,28 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Transcription</Text>
-        <Text style={styles.transcription}>{transcription}</Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Transcription</Text>
+          <TouchableOpacity
+            onPress={() => setIsEditingTranscription(!isEditingTranscription)}
+            style={styles.editButton}
+          >
+            <Text style={styles.editButtonText}>
+              {isEditingTranscription ? 'Done' : 'Edit'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {isEditingTranscription ? (
+          <TextInput
+            style={styles.transcriptionInput}
+            value={editedTranscription}
+            onChangeText={setEditedTranscription}
+            multiline
+            autoFocus
+          />
+        ) : (
+          <Text style={styles.transcription}>{editedTranscription}</Text>
+        )}
       </View>
 
       <View style={styles.card}>
@@ -173,12 +195,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
   },
   transcription: {
     fontSize: 16,
     color: colors.text,
     lineHeight: 24,
+  },
+  transcriptionInput: {
+    fontSize: 16,
+    color: colors.text,
+    lineHeight: 24,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   editButton: {
     padding: 4,

@@ -1,5 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { Audio } from 'expo-av';
 import { RecordButton } from '../components/RecordButton';
 import { colors } from '../constants/colors';
@@ -15,6 +25,7 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
   const [textInput, setTextInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   async function startRecording() {
     try {
@@ -116,51 +127,83 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
     }
   }
 
+  function handleTypeInstead() {
+    setModalVisible(true);
+  }
+
+  function handleModalSubmit() {
+    if (textInput.trim()) {
+      setModalVisible(false);
+      handleSubmit('text');
+    } else {
+      Alert.alert('Error', 'Please enter some text.');
+    }
+  }
+
+  function handleModalClose() {
+    setModalVisible(false);
+    setTextInput('');
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Cortex Journal</Text>
-        <Text style={styles.subtitle}>Capture your thoughts</Text>
+        <Text style={styles.subtitle}>Capture your thoughts.</Text>
       </View>
 
       <View style={styles.content}>
-        <View style={styles.inputCard}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type your thoughts..."
-            placeholderTextColor={colors.textLight}
-            value={textInput}
-            onChangeText={setTextInput}
-            multiline
-            editable={!isRecording}
-          />
-        </View>
+        <RecordButton isRecording={isRecording} onPress={handleRecordPress} />
 
         {!isRecording && (
-          <>
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <RecordButton isRecording={isRecording} onPress={handleRecordPress} />
-
-            <TouchableOpacity
-              style={styles.textButton}
-              onPress={handleTextSubmit}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.textButtonIcon}>⌨️</Text>
-              <Text style={styles.textButtonText}>Continue with Text</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {isRecording && (
-          <RecordButton isRecording={isRecording} onPress={handleRecordPress} />
+          <TouchableOpacity onPress={handleTypeInstead} activeOpacity={0.6}>
+            <Text style={styles.typeInstead}>Type instead</Text>
+          </TouchableOpacity>
         )}
       </View>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleModalClose}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Type your thoughts</Text>
+              <TouchableOpacity onPress={handleModalClose} activeOpacity={0.6}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="What's on your mind..."
+              placeholderTextColor={colors.textLight}
+              value={textInput}
+              onChangeText={setTextInput}
+              multiline
+              autoFocus
+            />
+
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                !textInput.trim() && styles.modalButtonDisabled,
+              ]}
+              onPress={handleModalSubmit}
+              activeOpacity={0.8}
+              disabled={!textInput.trim()}
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -169,7 +212,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: 60,
+    paddingTop: 80,
   },
   header: {
     paddingHorizontal: 24,
@@ -187,54 +230,64 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 24,
+    paddingBottom: 80,
   },
-  inputCard: {
+  typeInstead: {
+    fontSize: 14,
+    color: colors.primary,
+    marginTop: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
     backgroundColor: colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    marginBottom: 24,
-    minHeight: 100,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    minHeight: 300,
   },
-  textInput: {
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalClose: {
+    fontSize: 20,
+    color: colors.textSecondary,
+    padding: 4,
+  },
+  modalInput: {
+    flex: 1,
     fontSize: 16,
     color: colors.text,
     textAlignVertical: 'top',
+    minHeight: 120,
+    marginBottom: 24,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  textButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.text,
-    borderRadius: 24,
+  modalButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
     paddingVertical: 16,
-    paddingHorizontal: 24,
-    marginTop: 16,
+    alignItems: 'center',
   },
-  textButtonIcon: {
-    fontSize: 20,
-    marginRight: 8,
+  modalButtonDisabled: {
+    opacity: 0.5,
   },
-  textButtonText: {
+  modalButtonText: {
     color: colors.background,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
 });
