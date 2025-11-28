@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+  View,
+  Text,
+  SectionList,
+  StyleSheet,
+  RefreshControl,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { EntryCard } from '../components/EntryCard';
 import { Entry } from '../types';
 import { getAllEntries } from '../storage/entries';
 import { colors } from '../constants/colors';
+import { groupEntriesByTime, EntrySection } from '../utils/groupEntriesByTime';
 
 interface LibraryScreenProps {
   navigation: any;
@@ -11,7 +21,10 @@ interface LibraryScreenProps {
 
 export function LibraryScreen({ navigation }: LibraryScreenProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const loadEntries = useCallback(async () => {
     try {
@@ -34,6 +47,45 @@ export function LibraryScreen({ navigation }: LibraryScreenProps) {
     return unsubscribe;
   }, [navigation, loadEntries]);
 
+  // Debounce search query by 200ms
+  useEffect(() => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 200);
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Filter and group entries
+  const sections = useMemo(() => {
+    let filtered = entries;
+
+    if (debouncedQuery.trim()) {
+      const query = debouncedQuery.toLowerCase();
+      filtered = entries.filter(entry => {
+        // Check transcription
+        if (entry.transcription.toLowerCase().includes(query)) {
+          return true;
+        }
+        // Check names
+        if (entry.names.some(name => name.toLowerCase().includes(query))) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    return groupEntriesByTime(filtered);
+  }, [entries, debouncedQuery]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadEntries();
@@ -44,27 +96,70 @@ export function LibraryScreen({ navigation }: LibraryScreenProps) {
     navigation.navigate('EntryDetail', { entryId: entry.id });
   }
 
+  function clearSearch() {
+    setSearchQuery('');
+  }
+
+  // Count total filtered entries
+  const filteredCount = sections.reduce((acc, section) => acc + section.data.length, 0);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Library</Text>
-        <Text style={styles.subtitle}>{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</Text>
+        <Text style={styles.subtitle}>
+          {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+        </Text>
       </View>
 
-      <FlatList
-        data={entries}
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color={colors.textLight} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search entries..."
+            placeholderTextColor={colors.textLight}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={18} color={colors.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <EntryCard entry={item} onPress={() => handleEntryPress(item)} />
         )}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>{section.title}</Text>
+          </View>
+        )}
         contentContainerStyle={styles.listContent}
+        stickySectionHeadersEnabled={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No entries yet</Text>
-            <Text style={styles.emptySubtext}>Start capturing your thoughts!</Text>
+            <Text style={styles.emptyText}>
+              {debouncedQuery ? 'No matches found' : 'No entries yet'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              {debouncedQuery
+                ? 'Try a different search term'
+                : 'Start capturing your thoughts!'
+              }
+            </Text>
           </View>
         }
       />
@@ -80,7 +175,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,
@@ -92,9 +187,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
+  searchContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBackground,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 40,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+  },
+  clearButton: {
+    padding: 4,
+  },
   listContent: {
     paddingHorizontal: 24,
     paddingBottom: 24,
+  },
+  sectionHeader: {
+    backgroundColor: colors.background,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  sectionHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -112,4 +242,3 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
 });
-
