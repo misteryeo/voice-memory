@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { PersonChip } from '../components/PersonChip';
 import { colors } from '../constants/colors';
 import { saveEntry } from '../storage/entries';
 import { Entry } from '../types';
+import { generateAITitle } from '../utils/titleGeneration';
 
 interface SummaryScreenProps {
   route: {
@@ -21,12 +31,35 @@ interface SummaryScreenProps {
 
 export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
   const { type, audioUri, transcription, names: initialNames, themes: initialThemes, textNote } = route.params;
-  
+
   const [names, setNames] = useState<string[]>(initialNames);
   const [editedTranscription, setEditedTranscription] = useState(transcription);
   const [isEditingTranscription, setIsEditingTranscription] = useState(false);
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [newNameInput, setNewNameInput] = useState('');
+
+  // Title state
+  const [title, setTitle] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleLoading, setTitleLoading] = useState(true);
+
+  // Generate AI title on mount
+  useEffect(() => {
+    async function fetchTitle() {
+      setTitleLoading(true);
+      try {
+        const generatedTitle = await generateAITitle(transcription, initialNames);
+        setTitle(generatedTitle);
+      } catch (error) {
+        console.error('Error generating title:', error);
+        setTitle('Untitled moment');
+      } finally {
+        setTitleLoading(false);
+      }
+    }
+
+    fetchTitle();
+  }, [transcription, initialNames]);
 
   function removeName(nameToRemove: string) {
     setNames(names.filter(name => name !== nameToRemove));
@@ -37,6 +70,13 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
     if (trimmed && !names.includes(trimmed)) {
       setNames([...names, trimmed]);
       setNewNameInput('');
+    }
+  }
+
+  function handleTitleEditDone() {
+    setIsEditingTitle(false);
+    if (!title.trim()) {
+      setTitle('Untitled moment');
     }
   }
 
@@ -51,10 +91,11 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
         themes: initialThemes,
         timestamp: Date.now(),
         textNote,
+        title: title.trim() || 'Untitled moment',
       };
 
       await saveEntry(entry);
-      
+
       Alert.alert('Success', 'Entry saved successfully!', [
         {
           text: 'OK',
@@ -70,10 +111,57 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Review Entry</Text>
+        <Text style={styles.headerTitle}>Review Entry</Text>
         <Text style={styles.subtitle}>Check and confirm details</Text>
       </View>
 
+      {/* Title Card */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Title</Text>
+          {!titleLoading && (
+            <TouchableOpacity
+              onPress={() => isEditingTitle ? handleTitleEditDone() : setIsEditingTitle(true)}
+              style={styles.editButton}
+            >
+              <Text style={styles.editButtonText}>
+                {isEditingTitle ? 'Done' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {titleLoading ? (
+          <View style={styles.titleLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.titleLoadingText}>Generating title...</Text>
+          </View>
+        ) : isEditingTitle ? (
+          <View style={styles.titleEditContainer}>
+            <TextInput
+              style={styles.titleInput}
+              value={title}
+              onChangeText={setTitle}
+              autoFocus
+              selectTextOnFocus
+              onBlur={handleTitleEditDone}
+              onSubmitEditing={handleTitleEditDone}
+              returnKeyType="done"
+              maxLength={60}
+            />
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.titleDisplay}
+            onPress={() => setIsEditingTitle(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.titleText}>{title}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Transcription Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Transcription</Text>
@@ -99,6 +187,7 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
         )}
       </View>
 
+      {/* People Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Detected People</Text>
@@ -167,7 +256,7 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 32,
   },
-  title: {
+  headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
     color: colors.text,
@@ -192,10 +281,47 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Title styles
+  titleLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  titleLoadingText: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  titleDisplay: {
+    paddingVertical: 4,
+  },
+  titleText: {
+    fontSize: 20,
     fontWeight: '600',
     color: colors.text,
+    lineHeight: 28,
   },
+  titleEditContainer: {
+    marginTop: -4,
+  },
+  titleInput: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  // Transcription styles
   transcription: {
     fontSize: 16,
     color: colors.text,
@@ -221,6 +347,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  // People styles
   addNameContainer: {
     flexDirection: 'row',
     marginBottom: 12,
@@ -269,4 +396,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

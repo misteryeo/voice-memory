@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types';
 import { colors } from '../constants/colors';
+import { generateEntryTitle } from '../utils/generateEntryTitle';
 
 interface EntryCardProps {
   entry: Entry;
@@ -14,46 +15,76 @@ function formatTime(timestamp: number): string {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function getFirstLine(text: string, maxLength: number = 60): string {
-  // Get first line or first maxLength characters
-  const firstLine = text.split('\n')[0];
-  if (firstLine.length <= maxLength) {
-    return firstLine;
+function formatDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const entryDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const diffDays = Math.floor((today.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return formatTime(timestamp);
+  } else if (diffDays === 1) {
+    return `Yesterday, ${formatTime(timestamp)}`;
+  } else if (diffDays < 7) {
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+    return `${dayName}, ${formatTime(timestamp)}`;
+  } else {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   }
-  return firstLine.substring(0, maxLength).trim() + '...';
+}
+
+interface PeopleChipsProps {
+  names: string[];
+}
+
+function PeopleChips({ names }: PeopleChipsProps) {
+  if (names.length === 0) return null;
+
+  return (
+    <View style={styles.peopleContainer}>
+      <Text style={styles.peopleLabel}>People:</Text>
+      <View style={styles.chipsRow}>
+        {names.slice(0, 3).map((name, index) => (
+          <View key={index} style={styles.chip}>
+            <Text style={styles.chipText}>{name}</Text>
+          </View>
+        ))}
+        {names.length > 3 && (
+          <Text style={styles.moreText}>+{names.length - 3}</Text>
+        )}
+      </View>
+    </View>
+  );
 }
 
 export function EntryCard({ entry, onPress }: EntryCardProps) {
-  const preview = getFirstLine(entry.transcription);
+  const title = entry.title || generateEntryTitle(entry.transcription, entry.names);
+  const timestamp = formatDate(entry.timestamp);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           {entry.type === 'voice' ? (
-            <Ionicons name="mic" size={18} color={colors.primary} />
+            <Ionicons name="mic" size={16} color={colors.primary} />
           ) : (
-            <Ionicons name="document-text" size={18} color={colors.textSecondary} />
+            <Ionicons name="document-text" size={16} color={colors.textSecondary} />
           )}
         </View>
-        <Text style={styles.timestamp}>{formatTime(entry.timestamp)}</Text>
         <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
       </View>
 
-      <Text style={styles.preview} numberOfLines={2}>{preview}</Text>
+      <Text style={styles.title} numberOfLines={2}>{title}</Text>
+      <Text style={styles.timestamp}>{timestamp}</Text>
 
-      {entry.names.length > 0 && (
-        <View style={styles.namesContainer}>
-          {entry.names.slice(0, 2).map((name, index) => (
-            <View key={index} style={styles.nameBadge}>
-              <Text style={styles.nameText}>{name}</Text>
-            </View>
-          ))}
-          {entry.names.length > 2 && (
-            <Text style={styles.moreNames}>+{entry.names.length - 2} more</Text>
-          )}
-        </View>
-      )}
+      <PeopleChips names={entry.names} />
     </TouchableOpacity>
   );
 }
@@ -62,15 +93,16 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   iconContainer: {
     width: 28,
@@ -79,37 +111,51 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+    lineHeight: 24,
   },
   timestamp: {
-    flex: 1,
     fontSize: 13,
     color: colors.textSecondary,
+    marginBottom: 12,
   },
-  preview: {
-    fontSize: 15,
-    color: colors.text,
-    marginBottom: 10,
-    lineHeight: 20,
+  peopleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
   },
-  namesContainer: {
+  peopleLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginRight: 8,
+  },
+  chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
   },
-  nameBadge: {
+  chip: {
     backgroundColor: colors.chipBackground,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginRight: 6,
+    marginBottom: 4,
   },
-  nameText: {
+  chipText: {
     fontSize: 12,
     color: colors.text,
+    fontWeight: '500',
   },
-  moreNames: {
+  moreText: {
     fontSize: 12,
     color: colors.textSecondary,
+    marginLeft: 2,
   },
 });

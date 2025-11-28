@@ -8,7 +8,7 @@ import { colors } from '../constants/colors';
 // Screens
 import { CaptureScreen } from '../screens/CaptureScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
-import { LibraryScreen } from '../screens/LibraryScreen';
+import { LibraryTabsScreen } from '../screens/LibraryTabsScreen';
 import { EntryDetailScreen } from '../screens/EntryDetailScreen';
 import { PeopleScreen } from '../screens/PeopleScreen';
 import { PersonDetailScreen } from '../screens/PersonDetailScreen';
@@ -30,7 +30,7 @@ function HomeStackNavigator() {
 function LibraryStackNavigator() {
   return (
     <LibraryStack.Navigator screenOptions={{ headerShown: false }}>
-      <LibraryStack.Screen name="LibraryList" component={LibraryScreen} />
+      <LibraryStack.Screen name="LibraryTabs" component={LibraryTabsScreen} />
       <LibraryStack.Screen name="EntryDetail" component={EntryDetailScreen} />
     </LibraryStack.Navigator>
   );

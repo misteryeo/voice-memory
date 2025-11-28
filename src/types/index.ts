@@ -7,6 +7,7 @@ export interface Entry {
   themes: string[]; // Detected themes
   timestamp: number; // Unix timestamp
   textNote?: string; // Original text if typed entry
+  title?: string; // AI-generated or user-edited title
 }
 
 export interface Person {
