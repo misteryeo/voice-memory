@@ -80,6 +80,21 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
     }
   }
 
+  function handleDiscard() {
+    Alert.alert(
+      'Discard Entry',
+      'Are you sure you want to discard this entry?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => navigation.navigate('Capture'),
+        },
+      ]
+    );
+  }
+
   async function handleSave() {
     try {
       const entry: Entry = {
@@ -240,6 +255,14 @@ export function SummaryScreen({ route, navigation }: SummaryScreenProps) {
       >
         <Text style={styles.saveButtonText}>Save Entry</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={handleDiscard}
+        activeOpacity={0.6}
+        style={styles.discardButton}
+      >
+        <Text style={styles.discardButtonText}>Discard</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -394,5 +417,14 @@ const styles = StyleSheet.create({
     color: colors.background,
     fontSize: 18,
     fontWeight: '600',
+  },
+  discardButton: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  discardButtonText: {
+    fontSize: 14,
+    color: colors.recording,
   },
 });

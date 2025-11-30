@@ -1,6 +1,7 @@
 export const colors = {
   primary: '#4A90D9', // Blue for primary actions
   recording: '#F28B82', // Coral/red for recording state
+  paused: '#FFA726', // Orange/amber for paused state
   background: '#FFFFFF',
   text: '#000000',
   textSecondary: '#666666',

@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Audio } from 'expo-av';
-import { RecordButton } from '../components/RecordButton';
+import { RecordButton, RecordingState } from '../components/RecordButton';
 import { colors } from '../constants/colors';
 import { transcribeAudio } from '../utils/transcription';
 import { detectNames } from '../utils/nameDetection';
@@ -23,7 +23,7 @@ interface CaptureScreenProps {
 
 export function CaptureScreen({ navigation }: CaptureScreenProps) {
   const [textInput, setTextInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
+  const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -46,12 +46,36 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      
+
       setRecording(newRecording);
-      setIsRecording(true);
+      setRecordingState('recording');
     } catch (error) {
       console.error('Failed to start recording:', error);
       Alert.alert('Error', 'Failed to start recording. Please try again.');
+    }
+  }
+
+  async function pauseRecording() {
+    if (!recording) return;
+
+    try {
+      await recording.pauseAsync();
+      setRecordingState('paused');
+    } catch (error) {
+      console.error('Failed to pause recording:', error);
+      Alert.alert('Error', 'Failed to pause recording.');
+    }
+  }
+
+  async function resumeRecording() {
+    if (!recording) return;
+
+    try {
+      await recording.startAsync();
+      setRecordingState('recording');
+    } catch (error) {
+      console.error('Failed to resume recording:', error);
+      Alert.alert('Error', 'Failed to resume recording.');
     }
   }
 
@@ -59,15 +83,15 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
     if (!recording) return;
 
     try {
-      setIsRecording(false);
+      setRecordingState('idle');
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      
+
       if (uri) {
         // Navigate to summary with audio
         await handleSubmit('voice', uri);
       }
-      
+
       setRecording(null);
     } catch (error) {
       console.error('Failed to stop recording:', error);
@@ -75,10 +99,35 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
     }
   }
 
+  async function discardRecording() {
+    if (!recording) return;
+
+    Alert.alert(
+      'Discard Recording',
+      'Are you sure you want to discard this recording?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setRecordingState('idle');
+              await recording.stopAndUnloadAsync();
+              setRecording(null);
+            } catch (error) {
+              console.error('Failed to discard recording:', error);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function handleSubmit(type: 'voice' | 'text', audioUri?: string) {
     try {
       let transcription = '';
-      
+
       if (type === 'voice' && audioUri) {
         // Transcribe audio
         transcription = await transcribeAudio(audioUri);
@@ -112,11 +161,21 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
   }
 
   function handleRecordPress() {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
+    switch (recordingState) {
+      case 'idle':
+        startRecording();
+        break;
+      case 'recording':
+        pauseRecording();
+        break;
+      case 'paused':
+        resumeRecording();
+        break;
     }
+  }
+
+  function handleStopPress() {
+    stopRecording();
   }
 
   function handleTextSubmit() {
@@ -145,6 +204,8 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
     setTextInput('');
   }
 
+  const isActiveRecording = recordingState !== 'idle';
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -153,9 +214,27 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
       </View>
 
       <View style={styles.content}>
-        <RecordButton isRecording={isRecording} onPress={handleRecordPress} />
+        <RecordButton recordingState={recordingState} onPress={handleRecordPress} />
 
-        {!isRecording && (
+        {isActiveRecording && (
+          <View style={styles.recordingActions}>
+            <TouchableOpacity
+              style={styles.stopButton}
+              onPress={handleStopPress}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.stopButtonText}>Stop & Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={discardRecording}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.discardText}>Discard</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!isActiveRecording && (
           <TouchableOpacity onPress={handleTypeInstead} activeOpacity={0.6}>
             <Text style={styles.typeInstead}>Type instead</Text>
           </TouchableOpacity>
@@ -235,6 +314,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 80,
   },
+  recordingActions: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  stopButton: {
+    backgroundColor: colors.text,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+  },
+  stopButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  discardText: {
+    fontSize: 14,
+    color: colors.recording,
+    marginTop: 16,
+  },
   typeInstead: {
     fontSize: 14,
     color: colors.primary,
@@ -291,4 +390,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
