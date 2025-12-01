@@ -10,6 +10,7 @@ import { CaptureScreen } from '../screens/CaptureScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
 import { LibraryTabsScreen } from '../screens/LibraryTabsScreen';
 import { EntryDetailScreen } from '../screens/EntryDetailScreen';
+import { EditEntryScreen } from '../screens/EditEntryScreen';
 import { PeopleScreen } from '../screens/PeopleScreen';
 import { PersonDetailScreen } from '../screens/PersonDetailScreen';
 
@@ -32,6 +33,7 @@ function LibraryStackNavigator() {
     <LibraryStack.Navigator screenOptions={{ headerShown: false }}>
       <LibraryStack.Screen name="LibraryTabs" component={LibraryTabsScreen} />
       <LibraryStack.Screen name="EntryDetail" component={EntryDetailScreen} />
+      <LibraryStack.Screen name="EditEntry" component={EditEntryScreen} />
     </LibraryStack.Navigator>
   );
 }

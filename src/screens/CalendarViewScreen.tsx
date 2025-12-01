@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   FlatList,
   Pressable,
+  Alert,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types';
-import { getAllEntries } from '../storage/entries';
+import { getAllEntries, deleteEntry } from '../storage/entries';
 import { colors } from '../constants/colors';
 import { generateEntryTitle } from '../utils/generateEntryTitle';
 
@@ -125,6 +126,57 @@ export function CalendarViewScreen({ navigation }: CalendarViewScreenProps) {
     navigation.navigate('EntryDetail', { entryId: entry.id });
   }
 
+  function handleEntryLongPress(entry: Entry) {
+    Alert.alert(
+      'Entry Options',
+      'What would you like to do?',
+      [
+        {
+          text: 'Edit',
+          onPress: () => {
+            setModalVisible(false);
+            navigation.navigate('EditEntry', { entryId: entry.id });
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => confirmDelete(entry),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  function confirmDelete(entry: Entry) {
+    Alert.alert(
+      'Delete Entry',
+      'Are you sure you want to delete this entry? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteEntry(entry.id);
+              // Update the selected entries list
+              const updatedEntries = selectedEntries.filter(e => e.id !== entry.id);
+              setSelectedEntries(updatedEntries);
+              if (updatedEntries.length === 0) {
+                setModalVisible(false);
+              }
+              loadEntries();
+            } catch (error) {
+              console.error('Error deleting entry:', error);
+              Alert.alert('Error', 'Failed to delete entry. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   function closeModal() {
     setModalVisible(false);
     setSelectedDate(null);
@@ -137,7 +189,9 @@ export function CalendarViewScreen({ navigation }: CalendarViewScreenProps) {
       <TouchableOpacity
         style={styles.entryItem}
         onPress={() => handleEntryPress(item)}
+        onLongPress={() => handleEntryLongPress(item)}
         activeOpacity={0.7}
+        delayLongPress={400}
       >
         <View style={styles.entryIcon}>
           {item.type === 'voice' ? (

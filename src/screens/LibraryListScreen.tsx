@@ -7,11 +7,12 @@ import {
   RefreshControl,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EntryCard } from '../components/EntryCard';
 import { Entry } from '../types';
-import { getAllEntries } from '../storage/entries';
+import { getAllEntries, deleteEntry } from '../storage/entries';
 import { colors } from '../constants/colors';
 import { groupEntriesByTime } from '../utils/groupEntriesByTime';
 
@@ -91,6 +92,48 @@ export function LibraryListScreen({ navigation }: LibraryListScreenProps) {
     navigation.navigate('EntryDetail', { entryId: entry.id });
   }
 
+  function handleEntryLongPress(entry: Entry) {
+    Alert.alert(
+      'Entry Options',
+      'What would you like to do?',
+      [
+        {
+          text: 'Edit',
+          onPress: () => navigation.navigate('EditEntry', { entryId: entry.id }),
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => confirmDelete(entry),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  function confirmDelete(entry: Entry) {
+    Alert.alert(
+      'Delete Entry',
+      'Are you sure you want to delete this entry? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteEntry(entry.id);
+              loadEntries();
+            } catch (error) {
+              console.error('Error deleting entry:', error);
+              Alert.alert('Error', 'Failed to delete entry. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   function clearSearch() {
     setSearchQuery('');
   }
@@ -121,7 +164,11 @@ export function LibraryListScreen({ navigation }: LibraryListScreenProps) {
         sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <EntryCard entry={item} onPress={() => handleEntryPress(item)} />
+          <EntryCard
+            entry={item}
+            onPress={() => handleEntryPress(item)}
+            onLongPress={() => handleEntryLongPress(item)}
+          />
         )}
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>

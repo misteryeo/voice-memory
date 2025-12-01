@@ -8,6 +8,7 @@ import { generateEntryTitle } from '../utils/generateEntryTitle';
 interface EntryCardProps {
   entry: Entry;
   onPress: () => void;
+  onLongPress?: () => void;
 }
 
 function formatTime(timestamp: number): string {
@@ -64,12 +65,18 @@ function PeopleChips({ names }: PeopleChipsProps) {
   );
 }
 
-export function EntryCard({ entry, onPress }: EntryCardProps) {
+export function EntryCard({ entry, onPress, onLongPress }: EntryCardProps) {
   const title = entry.title || generateEntryTitle(entry.transcription, entry.names);
   const timestamp = formatDate(entry.timestamp);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+      delayLongPress={400}
+    >
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           {entry.type === 'voice' ? (

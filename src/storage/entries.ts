@@ -119,3 +119,20 @@ export async function deleteEntry(id: string): Promise<void> {
   }
 }
 
+/**
+ * Update an existing entry by ID
+ */
+export async function updateEntry(id: string, updates: Partial<Entry>): Promise<void> {
+  try {
+    const entries = await getAllEntries();
+    const index = entries.findIndex(entry => entry.id === id);
+    if (index !== -1) {
+      entries[index] = { ...entries[index], ...updates };
+      await AsyncStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
+    }
+  } catch (error) {
+    console.error('Error updating entry:', error);
+    throw error;
+  }
+}
+

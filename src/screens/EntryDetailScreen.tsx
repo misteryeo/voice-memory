@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types';
-import { getEntryById } from '../storage/entries';
+import { getEntryById, deleteEntry } from '../storage/entries';
 import { colors } from '../constants/colors';
 
 interface EntryDetailScreenProps {
@@ -43,9 +43,44 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
     };
   }, [entryId]);
 
+  // Reload entry when returning from edit screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadEntry();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   async function loadEntry() {
     const loadedEntry = await getEntryById(entryId);
     setEntry(loadedEntry);
+  }
+
+  function handleEdit() {
+    navigation.navigate('EditEntry', { entryId });
+  }
+
+  function handleDelete() {
+    Alert.alert(
+      'Delete Entry',
+      'Are you sure you want to delete this entry? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteEntry(entryId);
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error deleting entry:', error);
+              Alert.alert('Error', 'Failed to delete entry. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   }
 
   async function playAudio() {
@@ -102,6 +137,14 @@ export function EntryDetailScreen({ route, navigation }: EntryDetailScreenProps)
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Entry Details</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleEdit}>
+            <Ionicons name="create-outline" size={22} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={22} color={colors.recording} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.metaContainer}>
@@ -189,6 +232,15 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.text,
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   loadingText: {
     fontSize: 16,
