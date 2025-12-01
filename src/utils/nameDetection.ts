@@ -12,7 +12,7 @@ const COMMON_FIRST_NAMES = new Set([
   'Charlie', 'Chris', 'Christian', 'Christopher', 'Cody', 'Colin', 'Connor', 'Craig', 'Dan', 'Daniel',
   'Danny', 'Dave', 'David', 'Dennis', 'Derek', 'Dominic', 'Don', 'Donald', 'Doug', 'Douglas',
   'Drew', 'Dylan', 'Ed', 'Eddie', 'Edward', 'Eric', 'Erik', 'Ethan', 'Evan', 'Frank',
-  'Fred', 'Gabriel', 'Gary', 'George', 'Gerald', 'Grant', 'Greg', 'Gregory', 'Harry', 'Henry',
+  'Fred', 'Gabriel', 'Gary', 'George', 'Gerald', 'Grant', 'Greg', 'Gregory', 'Harold', 'Harry', 'Henry',
   'Hunter', 'Ian', 'Isaac', 'Jack', 'Jackson', 'Jacob', 'Jake', 'James', 'Jason', 'Jay',
   'Jeff', 'Jeffrey', 'Jeremy', 'Jerry', 'Jesse', 'Jim', 'Jimmy', 'Joe', 'Joel', 'John',
   'Johnny', 'Jon', 'Jonathan', 'Jordan', 'Jose', 'Joseph', 'Josh', 'Joshua', 'Juan', 'Justin',
