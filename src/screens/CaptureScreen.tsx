@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { RecordButton, RecordingState } from '../components/RecordButton';
@@ -26,6 +27,8 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
 
   async function startRecording() {
     try {
@@ -125,19 +128,26 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
   }
 
   async function handleSubmit(type: 'voice' | 'text', audioUri?: string) {
+    setIsProcessing(true);
     try {
       let transcription = '';
 
       if (type === 'voice' && audioUri) {
-        // Transcribe audio
+        setProcessingStatus('Preparing audio...');
+        // Small delay to show first status
+        await new Promise(r => setTimeout(r, 100));
+
+        setProcessingStatus('Transcribing...');
         transcription = await transcribeAudio(audioUri);
       } else if (type === 'text' && textInput.trim()) {
         transcription = textInput.trim();
       } else {
         Alert.alert('Error', 'Please record audio or enter text.');
+        setIsProcessing(false);
         return;
       }
 
+      setProcessingStatus('Analyzing content...');
       // Detect names and themes
       const names = detectNames(transcription);
       const themes = detectThemes(transcription);
@@ -157,6 +167,9 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
     } catch (error) {
       console.error('Error processing entry:', error);
       Alert.alert('Error', 'Failed to process entry. Please try again.');
+    } finally {
+      setIsProcessing(false);
+      setProcessingStatus('');
     }
   }
 
@@ -283,6 +296,16 @@ export function CaptureScreen({ navigation }: CaptureScreenProps) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.processingStatus}>{processingStatus}</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -388,5 +411,30 @@ const styles = StyleSheet.create({
     color: colors.background,
     fontSize: 18,
     fontWeight: '600',
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  processingCard: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  processingStatus: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
   },
 });
