@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { EntryCard } from '../components/EntryCard';
 import { Entry } from '../types';
 import { getAllEntries } from '../storage/entries';
@@ -37,32 +38,31 @@ export function LibraryScreen({ navigation }: LibraryScreenProps) {
     }
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+  useFocusEffect(
+    useCallback(() => {
       loadEntries();
-    });
-
-    loadEntries();
-
-    return unsubscribe;
-  }, [navigation, loadEntries]);
+      return () => {};
+    }, [loadEntries])
+  );
 
   // Debounce search query by 200ms
-  useEffect(() => {
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-
-    debounceTimeout.current = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 200);
-
-    return () => {
+  useFocusEffect(
+    useCallback(() => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
       }
-    };
-  }, [searchQuery]);
+
+      debounceTimeout.current = setTimeout(() => {
+        setDebouncedQuery(searchQuery);
+      }, 200);
+
+      return () => {
+        if (debounceTimeout.current) {
+          clearTimeout(debounceTimeout.current);
+        }
+      };
+    }, [searchQuery])
+  );
 
   // Filter and group entries
   const sections = useMemo(() => {
@@ -92,9 +92,26 @@ export function LibraryScreen({ navigation }: LibraryScreenProps) {
     setRefreshing(false);
   }, [loadEntries]);
 
-  function handleEntryPress(entry: Entry) {
-    navigation.navigate('EntryDetail', { entryId: entry.id });
-  }
+  const handleEntryPress = useCallback(
+    (entry: Entry) => {
+      navigation.navigate('EntryDetail', { entryId: entry.id });
+    },
+    [navigation]
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: Entry }) => <EntryCard entry={item} onPress={() => handleEntryPress(item)} />,
+    [handleEntryPress]
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: EntrySection }) => (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderText}>{section.title}</Text>
+      </View>
+    ),
+    []
+  );
 
   function clearSearch() {
     setSearchQuery('');
@@ -136,19 +153,17 @@ export function LibraryScreen({ navigation }: LibraryScreenProps) {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <EntryCard entry={item} onPress={() => handleEntryPress(item)} />
-        )}
-        renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>{section.title}</Text>
-          </View>
-        )}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        initialNumToRender={10}
+        maxToRenderPerBatch={12}
+        windowSize={6}
+        removeClippedSubviews
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
@@ -157,8 +172,7 @@ export function LibraryScreen({ navigation }: LibraryScreenProps) {
             <Text style={styles.emptySubtext}>
               {debouncedQuery
                 ? 'Try a different search term'
-                : 'Start capturing your thoughts!'
-              }
+                : 'Start capturing your thoughts!'}
             </Text>
           </View>
         }

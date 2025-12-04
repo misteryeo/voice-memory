@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
@@ -8,7 +8,7 @@ interface PersonChipProps {
   onRemove: () => void;
 }
 
-export function PersonChip({ name, onRemove }: PersonChipProps) {
+function PersonChipBase({ name, onRemove }: PersonChipProps) {
   return (
     <View style={styles.chip}>
       <Text style={styles.chipText}>{name}</Text>
@@ -18,6 +18,8 @@ export function PersonChip({ name, onRemove }: PersonChipProps) {
     </View>
   );
 }
+
+export const PersonChip = memo(PersonChipBase);
 
 const styles = StyleSheet.create({
   chip: {
@@ -39,4 +41,3 @@ const styles = StyleSheet.create({
     padding: 2,
   },
 });
-

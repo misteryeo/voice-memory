@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,15 +24,15 @@ function getGradientColors(name: string): string[] {
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   const hue1 = Math.abs(hash) % 360;
   const hue2 = (hue1 + 60) % 360;
-  
+
   // Convert to hex colors (simplified - using purple-blue range)
   return colors.avatarGradient;
 }
 
-export function PersonCard({ person, onPress }: PersonCardProps) {
+function PersonCardBase({ person, onPress }: PersonCardProps) {
   const initials = getInitials(person.name);
   const gradientColors = getGradientColors(person.name);
 
@@ -56,6 +56,8 @@ export function PersonCard({ person, onPress }: PersonCardProps) {
     </TouchableOpacity>
   );
 }
+
+export const PersonCard = memo(PersonCardBase);
 
 const styles = StyleSheet.create({
   card: {
@@ -93,4 +95,3 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 });
-

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entry } from '../types';
@@ -65,7 +65,7 @@ function PeopleChips({ names }: PeopleChipsProps) {
   );
 }
 
-export function EntryCard({ entry, onPress, onLongPress }: EntryCardProps) {
+function EntryCardBase({ entry, onPress, onLongPress }: EntryCardProps) {
   const title = entry.title || generateEntryTitle(entry.transcription, entry.names);
   const timestamp = formatDate(entry.timestamp);
 
@@ -95,6 +95,8 @@ export function EntryCard({ entry, onPress, onLongPress }: EntryCardProps) {
     </TouchableOpacity>
   );
 }
+
+export const EntryCard = memo(EntryCardBase);
 
 const styles = StyleSheet.create({
   card: {

@@ -75,20 +75,22 @@ export function TabNavigator() {
             borderTopColor: colors.border,
             borderTopWidth: 1,
           },
+          lazy: true,
+          detachInactiveScreens: true,
         })}
       >
-        <Tab.Screen 
-          name="Home" 
+        <Tab.Screen
+          name="Home"
           component={HomeStackNavigator}
           options={{ title: 'Home' }}
         />
-        <Tab.Screen 
-          name="Library" 
+        <Tab.Screen
+          name="Library"
           component={LibraryStackNavigator}
           options={{ title: 'Library' }}
         />
-        <Tab.Screen 
-          name="People" 
+        <Tab.Screen
+          name="People"
           component={PeopleStackNavigator}
           options={{ title: 'People' }}
         />
@@ -96,4 +98,3 @@ export function TabNavigator() {
     </NavigationContainer>
   );
 }
-

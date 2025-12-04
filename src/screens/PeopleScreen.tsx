@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { PersonCard } from '../components/PersonCard';
 import { Person } from '../types';
 import { getAllPeople } from '../storage/entries';
@@ -29,7 +30,7 @@ export function PeopleScreen({ navigation }: PeopleScreenProps) {
   const [people, setPeople] = useState<Person[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const sectionListRef = useRef<SectionList>(null);
+  const sectionListRef = useRef<SectionList<Person>>(null);
 
   const loadPeople = useCallback(async () => {
     try {
@@ -44,15 +45,12 @@ export function PeopleScreen({ navigation }: PeopleScreenProps) {
     }
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+  useFocusEffect(
+    useCallback(() => {
       loadPeople();
-    });
-
-    loadPeople();
-
-    return unsubscribe;
-  }, [navigation, loadPeople]);
+      return () => {};
+    }, [loadPeople])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -73,7 +71,7 @@ export function PeopleScreen({ navigation }: PeopleScreenProps) {
     const groups: { [key: string]: Person[] } = {};
 
     for (const person of filtered) {
-      const firstLetter = person.name[0].toUpperCase();
+      const firstLetter = person.name[0]?.toUpperCase() || '#';
       if (!groups[firstLetter]) {
         groups[firstLetter] = [];
       }
@@ -92,13 +90,30 @@ export function PeopleScreen({ navigation }: PeopleScreenProps) {
   }, [people, searchQuery]);
 
   // Get available letters (only those with people)
-  const availableLetters = useMemo(() => {
-    return sections.map(s => s.title);
-  }, [sections]);
+  const availableLetters = useMemo(() => sections.map(s => s.title), [sections]);
 
-  function handlePersonPress(person: Person) {
-    navigation.navigate('PersonDetail', { personName: person.name });
-  }
+  const handlePersonPress = useCallback(
+    (person: Person) => {
+      navigation.navigate('PersonDetail', { personName: person.name });
+    },
+    [navigation]
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: Person }) => (
+      <PersonCard person={item} onPress={() => handlePersonPress(item)} />
+    ),
+    [handlePersonPress]
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: Section }) => (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderText}>{section.title}</Text>
+      </View>
+    ),
+    []
+  );
 
   function handleLetterPress(letter: string) {
     const sectionIndex = sections.findIndex(s => s.title === letter);
@@ -151,19 +166,17 @@ export function PeopleScreen({ navigation }: PeopleScreenProps) {
           ref={sectionListRef}
           sections={sections}
           keyExtractor={(item) => item.name}
-          renderItem={({ item }) => (
-            <PersonCard person={item} onPress={() => handlePersonPress(item)} />
-          )}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{section.title}</Text>
-            </View>
-          )}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={true}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          initialNumToRender={12}
+          maxToRenderPerBatch={14}
+          windowSize={6}
+          removeClippedSubviews
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
@@ -172,8 +185,7 @@ export function PeopleScreen({ navigation }: PeopleScreenProps) {
               <Text style={styles.emptySubtext}>
                 {searchQuery
                   ? 'Try a different search term'
-                  : 'People will appear here as you mention them in entries'
-                }
+                  : 'People will appear here as you mention them in entries'}
               </Text>
             </View>
           }
